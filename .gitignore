@@ -1,0 +1,40 @@
+# Dependencias
+**/node_modules/
+
+# Builds
+**/dist/
+**/build/
+**/out/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Cachés
+.cache/
+.vite/
+.parcel-cache/
+
+# Cobertura
+coverage/
+
+# Electron
+release/
+
+# Archivos temporales
+tmp/
+temp/
+
+# TypeScript
+*.tsbuildinfo
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
