@@ -3,6 +3,7 @@ import { Remito } from "../models/Remito";
 import { guardarRemito, exportarExcel } from "../services/remito.service";
 import { REMITO_INICIAL } from "../constants/remito";
 import { Producto } from "../services/producto.service";
+import { validarRemitoFrontend } from "../utils/remitoValidation";
 
 // Hook para gestionar el formulario de remito
 export function useRemito() {
@@ -22,6 +23,8 @@ export function useRemito() {
     useState<Producto | null>(null);
 
   const [cantidadRollos, setCantidadRollos] = useState("");
+
+  const [errores, setErrores] = useState<string[]>([]);
 
   const productoRef = useRef<HTMLInputElement>(null);
 
@@ -101,6 +104,15 @@ export function useRemito() {
 
   // Guardar remito
   const handleGuardarRemito = async () => {
+    const erroresValidacion = validarRemitoFrontend(formulario);
+
+    if (erroresValidacion.length > 0) {
+      setErrores(erroresValidacion);
+      return;
+    }
+
+    setErrores([]);
+
     try {
       await guardarRemito(formulario);
 
@@ -150,5 +162,7 @@ export function useRemito() {
 
     handleGuardarRemito,
     handleExportarExcel,
+
+    errores,
   };
 }

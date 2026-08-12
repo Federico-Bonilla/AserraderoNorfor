@@ -36,6 +36,7 @@ function FormularioRemito() {
     agregarProducto,
     handleGuardarRemito,
     handleExportarExcel,
+    errores,
   } = useRemito();
 
   return (
@@ -402,6 +403,23 @@ function FormularioRemito() {
           onChange={handleChange}
         />
       </div>
+
+      {errores.length > 0 && (
+        <div className="rounded-md border border-red-300 bg-red-50 p-4">
+          <p className="mb-2 font-semibold text-red-700">
+            {errores.length === 1
+              ? "Falta 1 dato obligatorio para guardar el remito:"
+              : `Faltan ${errores.length} datos obligatorios para guardar el remito:`}
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            {errores.map((err, i) => (
+              <li key={i} className="text-sm text-red-600">
+                {err}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="flex gap-4">
         <Button type="button" onClick={handleGuardarRemito}>
