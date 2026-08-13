@@ -17,8 +17,8 @@ export const exportarStockExcel = async () => {
     { header: "ID", key: "id", width: 10 },
     { header: "N° Remito", key: "numero_remito", width: 20 },
     { header: "Proveedor", key: "proveedor", width: 30 },
-    { header: "Fecha", key: "fecha", width: 15 },
-    { header: "Patente", key: "patente", width: 15 },
+    { header: "Fecha Comprobante", key: "fecha_comprobante", width: 15 },
+    { header: "Patente Chasis", key: "patente_chasis", width: 15 },
     { header: "Chofer", key: "chofer", width: 25 },
     { header: "Observaciones", key: "observaciones", width: 40 },
   ];
