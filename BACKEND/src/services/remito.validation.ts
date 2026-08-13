@@ -7,13 +7,15 @@ import { Remito, RemitoCabecera, RemitoDetalle } from "../types/Remito";
 // Reglas basadas en DATABASE/schema.sql y en el contrato del frontend
 // (FRONTEND/src/models/Remito.ts + FRONTEND/src/hooks/useRemito.ts).
 //
-// No se imponen reglas de negocio NO definidas en el codigo actual:
-//   - detalle[] puede ser vacio (la BD permite insertar remito sin items;
-//     el service con for...of no itera y commitea sin detalle).
-//   - los campos numericos del detalle se permiten null (no se fuerza el 0
-//     hardcodeado del frontend; null = "no medido").
-//   - estado: si viene vacio se aplica el default 'ACTIVO' (consistente con
-//     el service que hacia `estado ?? "ACTIVO"` — extendemos a cadena vacia).
+// Reglas de negocio aprobadas en T007:
+//   - detalle[] NO puede ser vacio (minimo 1 item).
+//   - producto es obligatorio en cada detalle.
+//   - fecha_recepcion debe ser >= fecha_comprobante.
+//   - letra es obligatorio.
+// Los campos numericos del detalle se permiten null (no se fuerza el 0
+// hardcodeado del frontend; null = "no medido").
+// estado: si viene vacio se aplica el default 'ACTIVO' (consistente con
+// el service que hacia `estado ?? "ACTIVO"` — extendemos a cadena vacia).
 // ============================================================================
 
 export type ValidationResult =
@@ -133,7 +135,7 @@ function validarCabecera(c: unknown): RemitoCabecera | null {
     return null;
   }
   textoObligatorio("cabecera.comprobante", c.comprobante, MAX.comprobante);
-  textoOpcional("cabecera.letra", c.letra, MAX.letra);
+  textoObligatorio("cabecera.letra", c.letra, MAX.letra);
   textoObligatorio(
     "cabecera.numero_sucursal",
     c.numero_sucursal,
@@ -146,6 +148,17 @@ function validarCabecera(c: unknown): RemitoCabecera | null {
   );
   fechaObligatoria("cabecera.fecha_comprobante", c.fecha_comprobante);
   fechaObligatoria("cabecera.fecha_recepcion", c.fecha_recepcion);
+  // Coherencia de fechas: recepcion no puede ser anterior a comprobante (T007)
+  if (
+    typeof c.fecha_comprobante === "string" &&
+    typeof c.fecha_recepcion === "string" &&
+    FECHA_ISO.test(c.fecha_comprobante) &&
+    FECHA_ISO.test(c.fecha_recepcion)
+  ) {
+    if (c.fecha_recepcion < c.fecha_comprobante) {
+      push("cabecera.fecha_recepcion: no puede ser anterior a fecha_comprobante.");
+    }
+  }
   textoOpcional("cabecera.nota_recepcion", c.nota_recepcion, MAX.nota_recepcion);
   textoObligatorio("cabecera.proveedor", c.proveedor, MAX.proveedor);
   textoOpcional("cabecera.direccion", c.direccion, MAX.direccion);
@@ -254,7 +267,7 @@ function validarDetalleItem(idx: number, item: unknown): RemitoDetalle | null {
     }
   }
 
-  textoOpcional(`detalle[${idx}].producto`, item.producto, MAX.producto);
+  textoObligatorio(`detalle[${idx}].producto`, item.producto, MAX.producto);
   textoOpcional(
     `detalle[${idx}].descripcion`,
     item.descripcion,
@@ -323,6 +336,11 @@ export function validarRemito(body: unknown): ValidationResult {
   for (let i = 0; i < body.detalle.length; i++) {
     const item = validarDetalleItem(i, body.detalle[i]);
     if (item) detalle.push(item);
+  }
+
+  // Minimo 1 detalle (T007)
+  if (detalle.length === 0 && !errorsPila.some((e) => e.startsWith("detalle["))) {
+    push("detalle: debe tener al menos 1 item.");
   }
 
   if (errorsPila.length > 0) {
