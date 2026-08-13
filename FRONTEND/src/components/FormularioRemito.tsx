@@ -20,7 +20,6 @@ function FormularioRemito() {
 
   const {
     formulario,
-    setFormulario,
 
     productoSeleccionado,
     setProductoSeleccionado,
