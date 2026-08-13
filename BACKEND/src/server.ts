@@ -12,8 +12,8 @@ async function startServer() {
 
     console.log("✅ PostgreSQL conectado");
 
-    app.listen(PORT, () => {
-      console.log(`🚀 Servidor escuchando en el puerto ${PORT}`);
+    app.listen(Number(PORT), "127.0.0.1", () => {
+      console.log(`🚀 Servidor escuchando en http://127.0.0.1:${PORT}`);
     });
   } catch (error) {
     console.error("❌ Error al conectar PostgreSQL");
