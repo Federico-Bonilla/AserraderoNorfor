@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useRef, useState } from "react";
+import { forwardRef, useEffect, useState } from "react";
 import { Producto } from "../../services/producto.service";
 import Input from "../ui/Input";
 import Button from "../ui/Button";

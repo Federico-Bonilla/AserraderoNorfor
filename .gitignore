@@ -27,6 +27,7 @@ coverage/
 
 # Electron
 release/
+**/dist-electron/
 
 # Archivos temporales
 tmp/
@@ -38,3 +39,7 @@ temp/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Artefactos backend
+BACKEND/Stock.xlsx
+BACKEND/~$*.xlsx
