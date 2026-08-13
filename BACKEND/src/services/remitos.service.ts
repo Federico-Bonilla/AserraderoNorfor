@@ -1,4 +1,5 @@
 import { pool } from "../database/connection";
+import { Remito } from "../types/Remito";
 
 export const obtenerRemitos = async () => {
   const resultado = await pool.query(`
@@ -10,7 +11,7 @@ export const obtenerRemitos = async () => {
   return resultado.rows;
 };
 
-export const guardarRemito = async (datos: any) => {
+export const guardarRemito = async (datos: Remito) => {
   const client = await pool.connect();
 
   try {
