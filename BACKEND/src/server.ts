@@ -1,8 +1,5 @@
-import dotenv from "dotenv";
 import app from "./app";
 import { pool } from "./database/connection";
-
-dotenv.config();
 
 const PORT = process.env.PORT || 3001;
 
@@ -18,6 +15,7 @@ async function startServer() {
   } catch (error) {
     console.error("❌ Error al conectar PostgreSQL");
     console.error(error);
+    process.exit(1);
   }
 }
 
