@@ -73,3 +73,35 @@ export interface Remito {
   cabecera: RemitoCabecera;
   detalle: RemitoDetalle[];
 }
+
+export interface RemitoGuardado {
+  id: number;
+  comprobante: string;
+  letra: string;
+  numero_sucursal: string;
+  numero_remito: string;
+  fecha_comprobante: string;
+  fecha_recepcion: string;
+  nota_recepcion: string;
+  proveedor: string;
+  direccion: string;
+  cuit: string;
+  origen: string;
+  certificado: string;
+  transporte: string;
+  precio_transporte: number;
+  centro_compra: string;
+  patente_chasis: string;
+  patente_acoplado: string;
+  chofer: string;
+  clausula_compra: string;
+  centro_auxiliar: string;
+  centro_credito: string;
+  obra: string;
+  lista_precio: string;
+  observaciones: string;
+  estado: string;
+  usuario: string;
+  created_at: string;
+  updated_at: string;
+}
