@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import {
   obtenerRemitos,
+  obtenerRemitoPorId,
   guardarRemito,
   actualizarRemito,
 } from "../services/remitos.service";
@@ -9,6 +10,30 @@ import { validarRemito } from "../services/remito.validation";
 export const getRemitos = async (req: Request, res: Response) => {
   const remitos = await obtenerRemitos();
   res.json(remitos);
+};
+
+export const getRemitoPorId = async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(404).json({
+      error: "Remito no encontrado",
+      detalle: `No existe un remito con id ${req.params.id}`,
+    });
+    return;
+  }
+
+  const remito = await obtenerRemitoPorId(id);
+
+  if (!remito) {
+    res.status(404).json({
+      error: "Remito no encontrado",
+      detalle: `No existe un remito con id ${id}`,
+    });
+    return;
+  }
+
+  res.json(remito);
 };
 
 export const putRemito = async (req: Request, res: Response) => {

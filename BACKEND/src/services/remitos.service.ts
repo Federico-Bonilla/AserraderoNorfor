@@ -1,5 +1,11 @@
 import { pool } from "../database/connection";
-import { Remito, RemitoGuardado } from "../types/Remito";
+import {
+  Remito,
+  RemitoGuardado,
+  RemitoConId,
+  RemitoCabecera,
+  RemitoDetalle,
+} from "../types/Remito";
 
 export const obtenerRemitos = async (): Promise<RemitoGuardado[]> => {
   const resultado = await pool.query(`
@@ -9,6 +15,82 @@ export const obtenerRemitos = async (): Promise<RemitoGuardado[]> => {
   `);
 
   return resultado.rows;
+};
+
+export const obtenerRemitoPorId = async (
+  id: number,
+): Promise<RemitoConId | null> => {
+  const cabeceraResultado = await pool.query(
+    `
+    SELECT *
+    FROM remitos
+    WHERE id = $1;
+    `,
+    [id],
+  );
+
+  if (cabeceraResultado.rowCount === 0) {
+    return null;
+  }
+
+  const f = cabeceraResultado.rows[0];
+
+  const cabecera: RemitoCabecera = {
+    comprobante: f.comprobante,
+    letra: f.letra,
+    numero_sucursal: f.numero_sucursal,
+    numero_remito: f.numero_remito,
+    fecha_comprobante: f.fecha_comprobante.toISOString().slice(0, 10),
+    fecha_recepcion: f.fecha_recepcion.toISOString().slice(0, 10),
+    nota_recepcion: f.nota_recepcion,
+    proveedor: f.proveedor,
+    direccion: f.direccion,
+    cuit: f.cuit,
+    origen: f.origen,
+    certificado: f.certificado,
+    transporte: f.transporte,
+    precio_transporte: Number(f.precio_transporte),
+    centro_compra: f.centro_compra,
+    patente_chasis: f.patente_chasis,
+    patente_acoplado: f.patente_acoplado,
+    chofer: f.chofer,
+    clausula_compra: f.clausula_compra,
+    centro_auxiliar: f.centro_auxiliar,
+    centro_credito: f.centro_credito,
+    obra: f.obra,
+    lista_precio: f.lista_precio,
+    observaciones: f.observaciones,
+    estado: f.estado,
+    usuario: f.usuario,
+  };
+
+  const detalleResultado = await pool.query(
+    `
+    SELECT *
+    FROM remitos_detalle
+    WHERE remito_id = $1
+    ORDER BY item;
+    `,
+    [id],
+  );
+
+  const detalle: RemitoDetalle[] = detalleResultado.rows.map((r) => ({
+    item: r.item,
+    producto: r.producto,
+    descripcion: r.descripcion,
+    especie: r.especie,
+    diametro: r.diametro,
+    largo: Number(r.largo ?? 0),
+    cantidad_rollos: r.cantidad_rollos,
+    peso_bruto: Number(r.peso_bruto ?? 0),
+    peso_neto: Number(r.peso_neto ?? 0),
+    volumen: Number(r.volumen ?? 0),
+    deposito: r.deposito,
+    precio_unitario: Number(r.precio_unitario ?? 0),
+    lote: r.lote,
+  }));
+
+  return { id, cabecera, detalle };
 };
 
 export const actualizarRemito = async (
