@@ -1,3 +1,4 @@
+import { PoolClient } from "pg";
 import { pool } from "../database/connection";
 import {
   Remito,
@@ -93,6 +94,60 @@ export const obtenerRemitoPorId = async (
   return { id, cabecera, detalle };
 };
 
+// ==========================
+// Insercion de remitos_detalle. Patron unico compartido por
+// guardarRemito() (POST /remitos) y actualizarRemito() (PUT /remitos/:id).
+// ==========================
+
+const insertarDetalleRemito = async (
+  client: PoolClient,
+  remitoId: number,
+  detalle: RemitoDetalle[],
+) => {
+  for (const item of detalle) {
+    await client.query(
+      `
+      INSERT INTO remitos_detalle (
+        remito_id,
+        item,
+        producto,
+        descripcion,
+        especie,
+        diametro,
+        largo,
+        cantidad_rollos,
+        peso_bruto,
+        peso_neto,
+        volumen,
+        deposito,
+        precio_unitario,
+        lote
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,
+        $8,$9,$10,$11,$12,$13,$14
+      );
+      `,
+      [
+        remitoId,
+        item.item,
+        item.producto,
+        item.descripcion,
+        item.especie,
+        item.diametro,
+        item.largo,
+        item.cantidad_rollos,
+        item.peso_bruto,
+        item.peso_neto,
+        item.volumen,
+        item.deposito,
+        item.precio_unitario,
+        item.lote,
+      ],
+    );
+  }
+};
+
 export const actualizarRemito = async (
   id: number,
   datos: Remito,
@@ -108,7 +163,6 @@ export const actualizarRemito = async (
     // UPDATE de cabecera de remitos.
     // El id no se modifica. updated_at se setea explicitamente (no hay
     // trigger BEFORE UPDATE en la BD; solo el default de INSERT).
-    // El detalle (remitos_detalle) queda fuera de alcance de T015A.
     // ==========================
 
     const resultado = await client.query(
@@ -180,6 +234,18 @@ export const actualizarRemito = async (
       await client.query("ROLLBACK");
       return null;
     }
+
+    // ==========================
+    // Reemplazo del detalle existente. DELETE + re-INSERT dentro de la
+    // misma transaccion mantiene integridad cabecera + detalle:
+    // si algo falla, ROLLBACK revierte ambos cambios.
+    // ==========================
+
+    await client.query("DELETE FROM remitos_detalle WHERE remito_id = $1", [
+      id,
+    ]);
+
+    await insertarDetalleRemito(client, id, datos.detalle);
 
     await client.query("COMMIT");
 
@@ -278,48 +344,7 @@ export const guardarRemito = async (datos: Remito) => {
     // remitos_detalle (este es el nombre de la tabla en la base de datos PostgreSQL)
     // ==========================
 
-    for (const item of datos.detalle) {
-      await client.query(
-        `
-        INSERT INTO remitos_detalle (
-          remito_id,
-          item,
-          producto,
-          descripcion,
-          especie,
-          diametro,
-          largo,
-          cantidad_rollos,
-          peso_bruto,
-          peso_neto,
-          volumen,
-          deposito,
-          precio_unitario,
-          lote
-        )
-        VALUES (
-          $1,$2,$3,$4,$5,$6,$7,
-          $8,$9,$10,$11,$12,$13,$14
-        );
-        `,
-        [
-          remitoId,
-          item.item,
-          item.producto,
-          item.descripcion,
-          item.especie,
-          item.diametro,
-          item.largo,
-          item.cantidad_rollos,
-          item.peso_bruto,
-          item.peso_neto,
-          item.volumen,
-          item.deposito,
-          item.precio_unitario,
-          item.lote,
-        ],
-      );
-    }
+    await insertarDetalleRemito(client, remitoId, datos.detalle);
 
     await client.query("COMMIT");
 
