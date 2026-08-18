@@ -1,6 +1,10 @@
 import { useRemitos } from "../hooks/useRemitos";
 
-function ListadoRemitos() {
+interface ListadoRemitosProps {
+  onVer: (id: number) => void;
+}
+
+function ListadoRemitos({ onVer }: ListadoRemitosProps) {
   const { remitos, loading, error } = useRemitos();
 
   if (loading) {
@@ -47,6 +51,9 @@ function ListadoRemitos() {
             <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
               Estado
             </th>
+            <th className="px-4 py-3 text-left text-sm font-semibold text-slate-700">
+              Acciones
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -71,6 +78,14 @@ function ListadoRemitos() {
                 >
                   {remito.estado}
                 </span>
+              </td>
+              <td className="px-4 py-3 text-sm">
+                <button
+                  onClick={() => onVer(remito.id)}
+                  className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-700"
+                >
+                  👁 Ver
+                </button>
               </td>
             </tr>
           ))}

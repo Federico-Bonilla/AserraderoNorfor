@@ -74,6 +74,12 @@ export interface Remito {
   detalle: RemitoDetalle[];
 }
 
+export interface RemitoConId {
+  id: number;
+  cabecera: RemitoCabecera;
+  detalle: RemitoDetalle[];
+}
+
 export interface RemitoGuardado {
   id: number;
   comprobante: string;
