@@ -1,7 +1,13 @@
 import { useDetalleRemito } from "../hooks/useDetalleRemito";
+import { useProveedores } from "../hooks/useProveedores";
+import { useProductos } from "../hooks/useProductos";
+import { Proveedor } from "../services/proveedor.service";
+import { Producto } from "../services/producto.service";
 import Input from "./ui/Input";
 import Textarea from "./ui/Textarea";
 import Button from "./ui/Button";
+import ProveedorLookup from "./lookup/ProveedorLookup";
+import ProductoLookup from "./lookup/ProductoLookup";
 
 interface DetalleRemitoProps {
   id: number;
@@ -19,8 +25,13 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
     errores,
     handleChange,
     activarEdicion,
+    handleDetalleProducto,
+    handleDetalleCantidad,
     guardar,
   } = useDetalleRemito(id);
+
+  const { proveedores } = useProveedores();
+  const { productos } = useProductos();
 
   if (loading) {
     return (
@@ -47,6 +58,43 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
 
   const esVer = modo === "ver";
   const c = formulario.cabecera;
+
+  const proveedorActual: Proveedor | null =
+    proveedores.find((p) => p.razon_social === c.proveedor) ??
+    proveedores.find((p) => p.cuit === c.cuit) ??
+    (c.proveedor
+      ? {
+          cuenta: "",
+          razon_social: c.proveedor,
+          direccion: c.direccion,
+          telefono: "",
+          cuit: c.cuit,
+          vendedor: "",
+          localidad: "",
+          provincia: "",
+        }
+      : null);
+
+  const seleccionarProveedor = (proveedor: Proveedor | null) => {
+    handleChange({
+      target: {
+        name: "proveedor",
+        value: proveedor?.razon_social ?? "",
+      },
+    } as React.ChangeEvent<HTMLInputElement>);
+    handleChange({
+      target: {
+        name: "direccion",
+        value: proveedor?.direccion ?? "",
+      },
+    } as React.ChangeEvent<HTMLInputElement>);
+    handleChange({
+      target: {
+        name: "cuit",
+        value: proveedor?.cuit ?? "",
+      },
+    } as React.ChangeEvent<HTMLInputElement>);
+  };
 
   const handleGuardar = async () => {
     const ok = await guardar();
@@ -137,13 +185,20 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
         <div className="col-span-2">
           <label className="mb-2 block font-medium">Proveedor</label>
 
-          <Input
-            name="proveedor"
-            value={c.proveedor}
-            onChange={handleChange}
-            disabled={esVer}
-            placeholder="Proveedor"
-          />
+          {esVer ? (
+            <Input
+              name="proveedor"
+              value={c.proveedor}
+              disabled
+              placeholder="Proveedor"
+            />
+          ) : (
+            <ProveedorLookup
+              proveedores={proveedores}
+              value={proveedorActual}
+              onChange={seleccionarProveedor}
+            />
+          )}
         </div>
 
         <div className="col-span-2 grid grid-cols-12 gap-4">
@@ -278,43 +333,106 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
         <div className="col-span-2">
           <label className="mb-2 block font-medium">Detalle del Remito</label>
 
-          <table className="w-full border border-gray-300">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border p-2 text-left">Código</th>
-                <th className="border p-2 text-left">Descripción</th>
-                <th className="border p-2 text-center">Cantidad</th>
-                <th className="border p-2 text-center">Unidad</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {formulario.detalle.length === 0 ? (
+          {esVer ? (
+            <table className="w-full border border-gray-300">
+              <thead className="bg-gray-100">
                 <tr>
-                  <td
-                    colSpan={4}
-                    className="border p-4 text-center text-gray-500"
-                  >
-                    No hay productos en el detalle.
-                  </td>
+                  <th className="border p-2 text-left">Código</th>
+                  <th className="border p-2 text-left">Descripción</th>
+                  <th className="border p-2 text-center">Cantidad</th>
+                  <th className="border p-2 text-center">Unidad</th>
                 </tr>
-              ) : (
-                formulario.detalle.map((detalle, index) => (
-                  <tr key={index}>
-                    <td className="border p-2">{detalle.producto}</td>
+              </thead>
 
-                    <td className="border p-2">{detalle.descripcion}</td>
-
-                    <td className="border p-2 text-center">
-                      {detalle.cantidad_rollos}
+              <tbody>
+                {formulario.detalle.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="border p-4 text-center text-gray-500"
+                    >
+                      No hay productos en el detalle.
                     </td>
-
-                    <td className="border p-2 text-center">TN</td>
                   </tr>
-                ))
+                ) : (
+                  formulario.detalle.map((detalle, index) => (
+                    <tr key={index}>
+                      <td className="border p-2">{detalle.producto}</td>
+
+                      <td className="border p-2">{detalle.descripcion}</td>
+
+                      <td className="border p-2 text-center">
+                        {detalle.cantidad_rollos}
+                      </td>
+
+                      <td className="border p-2 text-center">TN</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <div className="space-y-4">
+              {formulario.detalle.length === 0 ? (
+                <p className="text-gray-500">No hay productos en el detalle.</p>
+              ) : (
+                formulario.detalle.map((detalle, index) => {
+                  const productoActual: Producto | null =
+                    productos.find((p) => p.codigo === detalle.producto) ??
+                    (detalle.producto
+                      ? {
+                          codigo: detalle.producto,
+                          descripcion: detalle.descripcion,
+                          unidad: "TN",
+                        }
+                      : null);
+
+                  return (
+                    <div
+                      key={index}
+                      className="grid grid-cols-12 items-start gap-4 rounded-lg border border-slate-200 p-4"
+                    >
+                      <div className="col-span-7">
+                        <label className="mb-2 block font-medium">
+                          Código
+                        </label>
+
+                        <ProductoLookup
+                          productos={productos}
+                          value={productoActual}
+                          onChange={(producto) =>
+                            handleDetalleProducto(index, producto)
+                          }
+                        />
+                      </div>
+
+                      <div className="col-span-3">
+                        <label className="mb-2 block font-medium">
+                          Cantidad
+                        </label>
+
+                        <Input
+                          type="number"
+                          value={detalle.cantidad_rollos}
+                          onChange={(e) =>
+                            handleDetalleCantidad(index, e.target.value)
+                          }
+                        />
+                      </div>
+
+                      <div className="col-span-2">
+                        <label className="mb-2 block font-medium">
+                          Unidad
+                        </label>
+
+                        <Input value="TN" readOnly />
+                      </div>
+                    </div>
+                  );
+                })
               )}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
       </div>
 

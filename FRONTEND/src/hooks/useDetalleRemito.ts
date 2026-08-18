@@ -4,6 +4,7 @@ import {
   getRemitoById,
   actualizarRemito,
 } from "../services/remito.service";
+import { Producto } from "../services/producto.service";
 import { validarRemitoFrontend } from "../utils/remitoValidation";
 
 export function useDetalleRemito(id: number) {
@@ -56,6 +57,40 @@ export function useDetalleRemito(id: number) {
     setModo("editar");
   };
 
+  const handleDetalleProducto = (index: number, producto: Producto | null) => {
+    setFormulario((prev) =>
+      prev
+        ? {
+            ...prev,
+            detalle: prev.detalle.map((d, i) =>
+              i === index
+                ? {
+                    ...d,
+                    producto: producto?.codigo ?? "",
+                    descripcion: producto?.descripcion ?? "",
+                  }
+                : d,
+            ),
+          }
+        : prev,
+    );
+  };
+
+  const handleDetalleCantidad = (index: number, valor: string) => {
+    setFormulario((prev) =>
+      prev
+        ? {
+            ...prev,
+            detalle: prev.detalle.map((d, i) =>
+              i === index
+                ? { ...d, cantidad_rollos: Number(valor) }
+                : d,
+            ),
+          }
+        : prev,
+    );
+  };
+
   const guardar = async (): Promise<boolean> => {
     if (!formulario) return false;
 
@@ -91,6 +126,8 @@ export function useDetalleRemito(id: number) {
     setErrores,
     handleChange,
     activarEdicion,
+    handleDetalleProducto,
+    handleDetalleCantidad,
     guardar,
   };
 }
