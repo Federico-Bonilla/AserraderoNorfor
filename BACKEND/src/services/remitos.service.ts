@@ -1,11 +1,11 @@
 import { pool } from "../database/connection";
-import { Remito } from "../types/Remito";
+import { Remito, RemitoGuardado } from "../types/Remito";
 
-export const obtenerRemitos = async () => {
+export const obtenerRemitos = async (): Promise<RemitoGuardado[]> => {
   const resultado = await pool.query(`
     SELECT *
     FROM remitos
-    ORDER BY id;
+    ORDER BY fecha_comprobante DESC, id DESC;
   `);
 
   return resultado.rows;
