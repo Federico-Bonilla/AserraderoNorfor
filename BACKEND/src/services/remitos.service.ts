@@ -11,6 +11,108 @@ export const obtenerRemitos = async (): Promise<RemitoGuardado[]> => {
   return resultado.rows;
 };
 
+export const actualizarRemito = async (
+  id: number,
+  datos: Remito,
+): Promise<{ id: number; mensaje: string } | null> => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const cabecera = datos.cabecera;
+
+    // ==========================
+    // UPDATE de cabecera de remitos.
+    // El id no se modifica. updated_at se setea explicitamente (no hay
+    // trigger BEFORE UPDATE en la BD; solo el default de INSERT).
+    // El detalle (remitos_detalle) queda fuera de alcance de T015A.
+    // ==========================
+
+    const resultado = await client.query(
+      `
+      UPDATE remitos
+      SET
+        comprobante = $1,
+        letra = $2,
+        numero_sucursal = $3,
+        numero_remito = $4,
+        fecha_comprobante = $5,
+        fecha_recepcion = $6,
+        nota_recepcion = $7,
+        proveedor = $8,
+        direccion = $9,
+        cuit = $10,
+        origen = $11,
+        certificado = $12,
+        transporte = $13,
+        precio_transporte = $14,
+        centro_compra = $15,
+        patente_chasis = $16,
+        patente_acoplado = $17,
+        chofer = $18,
+        clausula_compra = $19,
+        centro_auxiliar = $20,
+        centro_credito = $21,
+        obra = $22,
+        lista_precio = $23,
+        observaciones = $24,
+        estado = $25,
+        usuario = $26,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $27
+      RETURNING id;
+      `,
+      [
+        cabecera.comprobante,
+        cabecera.letra,
+        cabecera.numero_sucursal,
+        cabecera.numero_remito,
+        cabecera.fecha_comprobante,
+        cabecera.fecha_recepcion,
+        cabecera.nota_recepcion,
+        cabecera.proveedor,
+        cabecera.direccion,
+        cabecera.cuit,
+        cabecera.origen,
+        cabecera.certificado,
+        cabecera.transporte,
+        cabecera.precio_transporte,
+        cabecera.centro_compra,
+        cabecera.patente_chasis,
+        cabecera.patente_acoplado,
+        cabecera.chofer,
+        cabecera.clausula_compra,
+        cabecera.centro_auxiliar,
+        cabecera.centro_credito,
+        cabecera.obra,
+        cabecera.lista_precio,
+        cabecera.observaciones,
+        cabecera.estado,
+        cabecera.usuario,
+        id,
+      ],
+    );
+
+    if (resultado.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+
+    await client.query("COMMIT");
+
+    return {
+      id,
+      mensaje: "Remito actualizado correctamente",
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
 export const guardarRemito = async (datos: Remito) => {
   const client = await pool.connect();
 
