@@ -6,6 +6,20 @@ import { Producto } from "../services/producto.service";
 import { validarRemitoFrontend } from "../utils/remitoValidation";
 
 // Hook para gestionar el formulario de remito
+
+// Normalizacion de campos de medicion del detalle (T016):
+// campo vacio -> null (se persiste NULL, no 0 ni '').
+function normNumDetalle(v: string): number | null {
+  const t = v.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+function normTextoDetalle(v: string): string | null {
+  return v.trim() === "" ? null : v;
+}
+
 export function useRemito() {
   const fechaHoy = new Date().toISOString().split("T")[0];
 
@@ -23,6 +37,19 @@ export function useRemito() {
     useState<Producto | null>(null);
 
   const [cantidadRollos, setCantidadRollos] = useState("");
+
+  // Campos de medicion del nuevo detalle (T016). Se mantienen como string
+  // mientras se editan y se normalizan a null al agregar (vacio = no medido).
+  const [nuevoItem, setNuevoItem] = useState({
+    especie: "",
+    diametro: "",
+    largo: "",
+    peso_bruto: "",
+    tara: "",
+    deposito: "",
+    precio_unitario: "",
+    lote: "",
+  });
 
   const [errores, setErrores] = useState<string[]>([]);
 
@@ -45,6 +72,13 @@ export function useRemito() {
     }));
   };
 
+  const handleNuevoItemChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
+    const { name, value } = e.target;
+    setNuevoItem((prev) => ({ ...prev, [name]: value }));
+  };
+
   const eliminarProducto = (index: number) => {
     setFormulario((anterior) => ({
       ...anterior,
@@ -65,6 +99,14 @@ export function useRemito() {
       return;
     }
 
+    // Peso Neto = Peso Bruto - Tara (solo preview: el backend recalcula).
+    const pesoBruto = normNumDetalle(nuevoItem.peso_bruto);
+    const tara = normNumDetalle(nuevoItem.tara);
+    const pesoNeto =
+      pesoBruto === null
+        ? null
+        : Math.round((pesoBruto - (tara ?? 0)) * 1000) / 1000;
+
     setFormulario((anterior) => ({
       ...anterior,
       detalle: [
@@ -75,28 +117,39 @@ export function useRemito() {
           producto: productoSeleccionado.codigo,
           descripcion: productoSeleccionado.descripcion,
 
-          especie: "",
-          diametro: "",
-          largo: 0,
+          especie: normTextoDetalle(nuevoItem.especie),
+          diametro: normTextoDetalle(nuevoItem.diametro),
+          largo: normNumDetalle(nuevoItem.largo),
 
           cantidad_rollos: Number(cantidadRollos),
 
-          peso_bruto: 0,
-          peso_neto: 0,
+          peso_bruto: pesoBruto,
+          tara,
+          peso_neto: pesoNeto,
 
-          volumen: 0,
+          volumen: null,
 
-          deposito: "",
+          deposito: normTextoDetalle(nuevoItem.deposito),
 
-          precio_unitario: 0,
+          precio_unitario: normNumDetalle(nuevoItem.precio_unitario),
 
-          lote: "",
+          lote: normTextoDetalle(nuevoItem.lote),
         },
       ],
     }));
 
     setProductoSeleccionado(null);
     setCantidadRollos("");
+    setNuevoItem({
+      especie: "",
+      diametro: "",
+      largo: "",
+      peso_bruto: "",
+      tara: "",
+      deposito: "",
+      precio_unitario: "",
+      lote: "",
+    });
     setTimeout(() => {
       productoRef.current?.focus();
     }, 0);
@@ -151,6 +204,9 @@ export function useRemito() {
 
     cantidadRollos,
     setCantidadRollos,
+
+    nuevoItem,
+    handleNuevoItemChange,
 
     productoRef,
     cantidadRollosRef,

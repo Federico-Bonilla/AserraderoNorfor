@@ -4,12 +4,24 @@ import {
   obtenerRemitoPorId,
   guardarRemito,
   actualizarRemito,
+  obtenerSiguienteLote,
+  getOrigenes,
 } from "../services/remitos.service";
 import { validarRemito } from "../services/remito.validation";
 
 export const getRemitos = async (req: Request, res: Response) => {
   const remitos = await obtenerRemitos();
   res.json(remitos);
+};
+
+export const listarOrigenes = async (req: Request, res: Response) => {
+  const origenes = await getOrigenes();
+  res.json(origenes);
+};
+
+export const getSiguienteLote = async (req: Request, res: Response) => {
+  const lote = await obtenerSiguienteLote();
+  res.json({ lote });
 };
 
 export const getRemitoPorId = async (req: Request, res: Response) => {

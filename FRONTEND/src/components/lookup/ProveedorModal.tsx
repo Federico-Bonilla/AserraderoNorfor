@@ -116,6 +116,7 @@ function ProveedorModal({
         <div className="p-4">
           <Input
             ref={inputRef}
+            noNavegar
             autoFocus
             placeholder="Buscar por Cuenta, Razón Social o CUIT"
             value={busqueda}

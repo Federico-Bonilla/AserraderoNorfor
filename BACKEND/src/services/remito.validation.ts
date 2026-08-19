@@ -278,6 +278,7 @@ function validarDetalleItem(idx: number, item: unknown): RemitoDetalle | null {
   numeroNullONoNegativo(`detalle[${idx}].largo`, item.largo);
   enteroPositivo(`detalle[${idx}].cantidad_rollos`, item.cantidad_rollos);
   numeroNullONoNegativo(`detalle[${idx}].peso_bruto`, item.peso_bruto);
+  numeroNullONoNegativo(`detalle[${idx}].tara`, item.tara);
   numeroNullONoNegativo(`detalle[${idx}].peso_neto`, item.peso_neto);
   numeroNullONoNegativo(`detalle[${idx}].volumen`, item.volumen);
   textoOpcional(`detalle[${idx}].deposito`, item.deposito, MAX.deposito);
@@ -296,16 +297,17 @@ function validarDetalleItem(idx: number, item: unknown): RemitoDetalle | null {
         : idx + 1, // default: posicion 1-based si el cliente no la envia
     producto: (item.producto as string) ?? "",
     descripcion: (item.descripcion as string) ?? "",
-    especie: (item.especie as string) ?? "",
-    diametro: (item.diametro as string) ?? "",
+    especie: normTexto(item.especie),
+    diametro: normTexto(item.diametro),
     largo: normNum(item.largo),
     cantidad_rollos: Number(item.cantidad_rollos),
     peso_bruto: normNum(item.peso_bruto),
+    tara: normNum(item.tara),
     peso_neto: normNum(item.peso_neto),
     volumen: normNum(item.volumen),
-    deposito: (item.deposito as string) ?? "",
+    deposito: normTexto(item.deposito),
     precio_unitario: normNum(item.precio_unitario),
-    lote: (item.lote as string) ?? "",
+    lote: normTexto(item.lote),
   };
 }
 
@@ -313,6 +315,14 @@ function normNum(v: unknown): number | null {
   if (v === undefined || v === null || v === "") return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
+}
+
+// Campos de texto opcionales del detalle: vacio (NO cadena vacia) -> null,
+// para persistir NULL y no '' en remitos_detalle (T016).
+function normTexto(v: unknown): string | null {
+  if (v === undefined || v === null) return null;
+  if (typeof v !== "string") return v as string;
+  return v.trim() === "" ? null : v;
 }
 
 export function validarRemito(body: unknown): ValidationResult {
@@ -358,4 +368,5 @@ export const __TEST__ = {
   validarCabecera,
   validarDetalleItem,
   normNum,
+  normTexto,
 };

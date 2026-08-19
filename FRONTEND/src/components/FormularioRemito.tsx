@@ -3,11 +3,21 @@ import { useRemito } from "../hooks/useRemito";
 import { useProveedores } from "../hooks/useProveedores";
 import { Proveedor } from "../services/proveedor.service";
 import { useProductos } from "../hooks/useProductos";
-import Input from "./ui/Input";
+import { useOrigenes } from "../hooks/useOrigenes";
+import { obtenerSiguienteLote } from "../services/remito.service";
+import Input, { enfocarSiguiente } from "./ui/Input";
 import Textarea from "./ui/Textarea";
 import Button from "./ui/Button";
 import ProveedorLookup from "./lookup/ProveedorLookup";
 import ProductoLookup from "./lookup/ProductoLookup";
+import OrigenLookup from "./lookup/OrigenLookup";
+
+const NUMERO_VALIDO = (v: string): number | null => {
+  const t = v.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+};
 
 function FormularioRemito() {
   const [proveedorSeleccionado, setProveedorSeleccionado] =
@@ -17,6 +27,7 @@ function FormularioRemito() {
 
   const { proveedores } = useProveedores();
   const { productos } = useProductos();
+  const { origenes } = useOrigenes();
 
   const {
     formulario,
@@ -26,6 +37,9 @@ function FormularioRemito() {
 
     cantidadRollos,
     setCantidadRollos,
+
+    nuevoItem,
+    handleNuevoItemChange,
 
     productoRef,
     cantidadRollosRef,
@@ -37,6 +51,42 @@ function FormularioRemito() {
     handleExportarExcel,
     errores,
   } = useRemito();
+
+  // Peso Neto = Peso Bruto - Tara (preview; el backend recalcula al guardar).
+  const pesoBrutoNuevo = NUMERO_VALIDO(nuevoItem.peso_bruto);
+  const taraNueva = NUMERO_VALIDO(nuevoItem.tara);
+  const pesoNetoNuevo =
+    pesoBrutoNuevo === null
+      ? null
+      : Math.round((pesoBrutoNuevo - (taraNueva ?? 0)) * 1000) / 1000;
+
+  const generarLote = async () => {
+    try {
+      const lote = await obtenerSiguienteLote();
+      handleNuevoItemChange({
+        target: { name: "lote", value: lote },
+      } as React.ChangeEvent<HTMLSelectElement>);
+    } catch (err) {
+      console.error(err);
+      alert("Error al generar el lote");
+    }
+  };
+
+  const onLoteKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "F3") {
+      e.preventDefault();
+      generarLote();
+    }
+  };
+
+  // Enter en selects (Especie/Diámetro/Largo/Certificado) avanza al
+  // siguiente campo del formulario.
+  const onSelectEnter = (e: React.KeyboardEvent<HTMLSelectElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      enfocarSiguiente(e.currentTarget);
+    }
+  };
 
   return (
     <form className="space-y-6">
@@ -150,12 +200,18 @@ function FormularioRemito() {
         <div>
           <label className="mb-2 block font-medium">Origen</label>
 
-          <Input
+          <OrigenLookup
             ref={origenRef}
-            name="origen"
+            origenes={origenes}
             value={formulario.cabecera.origen ?? ""}
-            onChange={handleChange}
-            placeholder="Origen"
+            onChange={(origen) =>
+              handleChange({
+                target: {
+                  name: "origen",
+                  value: origen,
+                },
+              } as React.ChangeEvent<HTMLInputElement>)
+            }
           />
         </div>
         <div>
@@ -165,6 +221,7 @@ function FormularioRemito() {
             name="certificado"
             value={formulario.cabecera.certificado}
             onChange={handleChange}
+            onKeyDown={onSelectEnter}
             className="w-full rounded-md border px-3 py-2"
           >
             <option value="NO FSC">NO FSC</option>
@@ -326,20 +383,177 @@ function FormularioRemito() {
             value={cantidadRollos}
             onChange={(e) => setCantidadRollos(e.target.value)}
             placeholder="Cantidad"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                agregarProducto();
-              }
-            }}
           />
+          <div className="mt-4 rounded-lg border border-slate-200 p-3">
+            <p className="mb-2 text-sm font-semibold text-slate-600">
+              Medición
+            </p>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Especie
+                </label>
+
+                <select
+                  name="especie"
+                  value={nuevoItem.especie}
+                  onChange={handleNuevoItemChange}
+                  onKeyDown={onSelectEnter}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">—</option>
+                  <option value="TAEDA">TAEDA</option>
+                  <option value="ELIOTI">ELIOTI</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Diámetro
+                </label>
+
+                <select
+                  name="diametro"
+                  value={nuevoItem.diametro}
+                  onChange={handleNuevoItemChange}
+                  onKeyDown={onSelectEnter}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">—</option>
+                  <option value="<30">&lt;30</option>
+                  <option value="25-30">25-30</option>
+                  <option value="15-25">15-25</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Largo
+                </label>
+
+                <select
+                  name="largo"
+                  value={nuevoItem.largo}
+                  onChange={handleNuevoItemChange}
+                  onKeyDown={onSelectEnter}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">—</option>
+                  <option value="3.15">3.15</option>
+                  <option value="3.50">3.50</option>
+                  <option value="3.75">3.75</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Peso Bruto
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    name="peso_bruto"
+                    value={nuevoItem.peso_bruto}
+                    onChange={handleNuevoItemChange}
+                    step="0.001"
+                  />
+
+                  <span className="shrink-0 text-xs font-medium text-slate-500">
+                    TN
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Tara
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    name="tara"
+                    value={nuevoItem.tara}
+                    onChange={handleNuevoItemChange}
+                    step="0.001"
+                  />
+
+                  <span className="shrink-0 text-xs font-medium text-slate-500">
+                    TN
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Peso Neto
+                </label>
+
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="number"
+                    step="0.001"
+                    value={pesoNetoNuevo ?? ""}
+                    readOnly
+                  />
+
+                  <span className="shrink-0 text-xs font-medium text-slate-500">
+                    TN
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Depósito
+                </label>
+
+                <Input
+                  name="deposito"
+                  value={nuevoItem.deposito}
+                  onChange={handleNuevoItemChange}
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Precio Unitario
+                </label>
+
+                <Input
+                  type="number"
+                  name="precio_unitario"
+                  value={nuevoItem.precio_unitario}
+                  onChange={handleNuevoItemChange}
+                  step="0.01"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">
+                  Lote
+                </label>
+
+                <Input
+                  name="lote"
+                  value={nuevoItem.lote}
+                  onChange={handleNuevoItemChange}
+                  onKeyDown={onLoteKeyDown}
+                  placeholder="F3 para generar"
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="flex items-end">
             <Button type="button" variant="success" onClick={agregarProducto}>
               ➕ Agregar
             </Button>
           </div>
         </div>
-        <div className="col-span-2">
+        <div className="col-span-2 overflow-x-auto">
           <label className="mb-2 block font-medium">Detalle del Remito</label>
 
           <table className="w-full border border-gray-300">
@@ -349,6 +563,15 @@ function FormularioRemito() {
                 <th className="border p-2 text-left">Descripción</th>
                 <th className="border p-2 text-center">Cantidad</th>
                 <th className="border p-2 text-center">Unidad</th>
+                <th className="border p-2 text-center">Especie</th>
+                <th className="border p-2 text-center">Ø</th>
+                <th className="border p-2 text-center">Largo</th>
+                <th className="border p-2 text-center">P.Bruto (TN)</th>
+                <th className="border p-2 text-center">Tara (TN)</th>
+                <th className="border p-2 text-center">P.Neto (TN)</th>
+                <th className="border p-2 text-center">Depósito</th>
+                <th className="border p-2 text-center">P.Unit</th>
+                <th className="border p-2 text-center">Lote</th>
                 <th className="border p-2 text-center">Acciones</th>
               </tr>
             </thead>
@@ -357,7 +580,7 @@ function FormularioRemito() {
               {formulario.detalle.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={14}
                     className="border p-4 text-center text-gray-500"
                   >
                     No hay productos agregados.
@@ -375,6 +598,42 @@ function FormularioRemito() {
                     </td>
 
                     <td className="border p-2 text-center">TN</td>
+
+                    <td className="border p-2 text-center">
+                      {detalle.especie ?? "—"}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {detalle.diametro ?? "—"}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {detalle.largo ?? "—"}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {detalle.peso_bruto ?? "—"}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {detalle.tara ?? "—"}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {detalle.peso_neto ?? "—"}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {detalle.deposito ?? "—"}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {detalle.precio_unitario ?? "—"}
+                    </td>
+
+                    <td className="border p-2 text-center">
+                      {detalle.lote ?? "—"}
+                    </td>
 
                     <td className="border p-2 text-center">
                       <Button

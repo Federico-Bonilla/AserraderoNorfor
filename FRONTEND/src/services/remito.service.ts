@@ -19,6 +19,13 @@ export const actualizarRemito = async (id: number, remito: Remito) => {
   return await api.put(`/remitos/${id}`, remito);
 };
 
+// Siguiente lote (5 dígitos, ej. "00123"). El cálculo es de backend/BD
+// (máximo numérico + 1, protegido con advisory lock) para evitar duplicados.
+export const obtenerSiguienteLote = async (): Promise<string> => {
+  const { data } = await api.get<{ lote: string }>("/remitos/siguiente-lote");
+  return data.lote;
+};
+
 export const exportarExcel = async () => {
   return await api.get("/exportar-stock");
 };

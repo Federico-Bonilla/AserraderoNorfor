@@ -1,13 +1,32 @@
 import { useDetalleRemito } from "../hooks/useDetalleRemito";
 import { useProveedores } from "../hooks/useProveedores";
 import { useProductos } from "../hooks/useProductos";
+import { useOrigenes } from "../hooks/useOrigenes";
+import { obtenerSiguienteLote } from "../services/remito.service";
 import { Proveedor } from "../services/proveedor.service";
 import { Producto } from "../services/producto.service";
-import Input from "./ui/Input";
+import Input, { enfocarSiguiente } from "./ui/Input";
 import Textarea from "./ui/Textarea";
 import Button from "./ui/Button";
 import ProveedorLookup from "./lookup/ProveedorLookup";
 import ProductoLookup from "./lookup/ProductoLookup";
+import OrigenLookup from "./lookup/OrigenLookup";
+
+const ESPECIES = ["TAEDA", "ELIOTI"];
+
+const DIAMETROS = ["<30", "25-30", "15-25"];
+
+const LARGOS = ["3.15", "3.50", "3.75"];
+
+// Mantiene valores persistidos que ya no estan en el dropdown (datos
+// existentes) para no romper la edicion de remitos viejos (T015B).
+const opcionesConActual = (
+  opciones: string[],
+  actual: string | null,
+): string[] => {
+  if (actual && !opciones.includes(actual)) return [actual, ...opciones];
+  return opciones;
+};
 
 interface DetalleRemitoProps {
   id: number;
@@ -27,11 +46,13 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
     activarEdicion,
     handleDetalleProducto,
     handleDetalleCantidad,
+    handleDetalleMedicion,
     guardar,
   } = useDetalleRemito(id);
 
   const { proveedores } = useProveedores();
   const { productos } = useProductos();
+  const { origenes } = useOrigenes();
 
   if (loading) {
     return (
@@ -101,8 +122,30 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
     if (ok) onGuardado();
   };
 
+  const generarLote = async (index: number) => {
+    try {
+      const lote = await obtenerSiguienteLote();
+      handleDetalleMedicion(index, "lote", lote);
+    } catch (err) {
+      console.error(err);
+      alert("Error al generar el lote");
+    }
+  };
+
+  // Enter en selects (Especie/Diámetro/Largo/Certificado) avanza al
+  // siguiente campo del formulario.
+  const onSelectEnter = (e: React.KeyboardEvent<HTMLSelectElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      enfocarSiguiente(e.currentTarget);
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <form
+      className="space-y-6"
+      onSubmit={(event) => event.preventDefault()}
+    >
       <div className="flex items-center gap-4">
         <h2 className="text-xl font-bold text-slate-800">
           Remito N° {c.letra} {c.numero_sucursal} - {c.numero_remito}
@@ -228,13 +271,26 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
         <div>
           <label className="mb-2 block font-medium">Origen</label>
 
-          <Input
-            name="origen"
-            value={c.origen ?? ""}
-            onChange={handleChange}
-            disabled={esVer}
-            placeholder="Origen"
-          />
+          {esVer ? (
+            <Input
+              value={c.origen ?? ""}
+              readOnly
+              placeholder="Origen"
+            />
+          ) : (
+            <OrigenLookup
+              origenes={origenes}
+              value={c.origen ?? ""}
+              onChange={(origen) =>
+                handleChange({
+                  target: {
+                    name: "origen",
+                    value: origen,
+                  },
+                } as React.ChangeEvent<HTMLInputElement>)
+              }
+            />
+          )}
         </div>
 
         <div>
@@ -245,6 +301,7 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
             value={c.certificado}
             onChange={handleChange}
             disabled={esVer}
+            onKeyDown={onSelectEnter}
             className="w-full rounded-md border px-3 py-2"
           >
             <option value="NO FSC">NO FSC</option>
@@ -330,7 +387,7 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
           />
         </div>
 
-        <div className="col-span-2">
+        <div className="col-span-2 overflow-x-auto">
           <label className="mb-2 block font-medium">Detalle del Remito</label>
 
           {esVer ? (
@@ -341,6 +398,15 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
                   <th className="border p-2 text-left">Descripción</th>
                   <th className="border p-2 text-center">Cantidad</th>
                   <th className="border p-2 text-center">Unidad</th>
+                  <th className="border p-2 text-center">Especie</th>
+                  <th className="border p-2 text-center">Ø</th>
+                  <th className="border p-2 text-center">Largo</th>
+                  <th className="border p-2 text-center">P.Bruto (TN)</th>
+                  <th className="border p-2 text-center">Tara (TN)</th>
+                  <th className="border p-2 text-center">P.Neto (TN)</th>
+                  <th className="border p-2 text-center">Depósito</th>
+                  <th className="border p-2 text-center">P.Unit</th>
+                  <th className="border p-2 text-center">Lote</th>
                 </tr>
               </thead>
 
@@ -348,7 +414,7 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
                 {formulario.detalle.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={4}
+                      colSpan={13}
                       className="border p-4 text-center text-gray-500"
                     >
                       No hay productos en el detalle.
@@ -366,6 +432,42 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
                       </td>
 
                       <td className="border p-2 text-center">TN</td>
+
+                      <td className="border p-2 text-center">
+                        {detalle.especie ?? "—"}
+                      </td>
+
+                      <td className="border p-2 text-center">
+                        {detalle.diametro ?? "—"}
+                      </td>
+
+                      <td className="border p-2 text-center">
+                        {detalle.largo ?? "—"}
+                      </td>
+
+                      <td className="border p-2 text-center">
+                        {detalle.peso_bruto ?? "—"}
+                      </td>
+
+                      <td className="border p-2 text-center">
+                        {detalle.tara ?? "—"}
+                      </td>
+
+                      <td className="border p-2 text-center">
+                        {detalle.peso_neto ?? "—"}
+                      </td>
+
+                      <td className="border p-2 text-center">
+                        {detalle.deposito ?? "—"}
+                      </td>
+
+                      <td className="border p-2 text-center">
+                        {detalle.precio_unitario ?? "—"}
+                      </td>
+
+                      <td className="border p-2 text-center">
+                        {detalle.lote ?? "—"}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -390,42 +492,262 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
                   return (
                     <div
                       key={index}
-                      className="grid grid-cols-12 items-start gap-4 rounded-lg border border-slate-200 p-4"
+                      className="space-y-4 rounded-lg border border-slate-200 p-4"
                     >
-                      <div className="col-span-7">
-                        <label className="mb-2 block font-medium">
-                          Código
-                        </label>
+                      <div className="grid grid-cols-12 items-start gap-4">
+                        <div className="col-span-7">
+                          <label className="mb-2 block font-medium">
+                            Código
+                          </label>
 
-                        <ProductoLookup
-                          productos={productos}
-                          value={productoActual}
-                          onChange={(producto) =>
-                            handleDetalleProducto(index, producto)
-                          }
-                        />
+                          <ProductoLookup
+                            productos={productos}
+                            value={productoActual}
+                            onChange={(producto) =>
+                              handleDetalleProducto(index, producto)
+                            }
+                          />
+                        </div>
+
+                        <div className="col-span-3">
+                          <label className="mb-2 block font-medium">
+                            Cantidad
+                          </label>
+
+                          <Input
+                            type="number"
+                            value={detalle.cantidad_rollos}
+                            onChange={(e) =>
+                              handleDetalleCantidad(index, e.target.value)
+                            }
+                          />
+                        </div>
+
+                        <div className="col-span-2">
+                          <label className="mb-2 block font-medium">
+                            Unidad
+                          </label>
+
+                          <Input value="TN" readOnly />
+                        </div>
                       </div>
 
-                      <div className="col-span-3">
-                        <label className="mb-2 block font-medium">
-                          Cantidad
-                        </label>
+                      <div className="grid grid-cols-12 gap-4">
+                        <div className="col-span-4">
+                          <label className="mb-2 block font-medium">
+                            Especie
+                          </label>
 
-                        <Input
-                          type="number"
-                          value={detalle.cantidad_rollos}
-                          onChange={(e) =>
-                            handleDetalleCantidad(index, e.target.value)
-                          }
-                        />
-                      </div>
+                          <select
+                            value={detalle.especie ?? ""}
+                            onChange={(e) =>
+                              handleDetalleMedicion(
+                                index,
+                                "especie",
+                                e.target.value,
+                              )
+                            }
+                            onKeyDown={onSelectEnter}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          >
+                            <option value="">—</option>
+                            {opcionesConActual(
+                              ESPECIES,
+                              detalle.especie,
+                            ).map((op) => (
+                              <option key={op} value={op}>
+                                {op}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
 
-                      <div className="col-span-2">
-                        <label className="mb-2 block font-medium">
-                          Unidad
-                        </label>
+                        <div className="col-span-4">
+                          <label className="mb-2 block font-medium">
+                            Diámetro
+                          </label>
 
-                        <Input value="TN" readOnly />
+                          <select
+                            value={detalle.diametro ?? ""}
+                            onChange={(e) =>
+                              handleDetalleMedicion(
+                                index,
+                                "diametro",
+                                e.target.value,
+                              )
+                            }
+                            onKeyDown={onSelectEnter}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          >
+                            <option value="">—</option>
+                            {opcionesConActual(
+                              DIAMETROS,
+                              detalle.diametro,
+                            ).map((op) => (
+                              <option key={op} value={op}>
+                                {op}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-span-4">
+                          <label className="mb-2 block font-medium">
+                            Largo
+                          </label>
+
+                          <select
+                            value={detalle.largo == null ? "" : String(detalle.largo)}
+                            onChange={(e) =>
+                              handleDetalleMedicion(
+                                index,
+                                "largo",
+                                e.target.value,
+                              )
+                            }
+                            onKeyDown={onSelectEnter}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+                          >
+                            <option value="">—</option>
+                            {opcionesConActual(
+                              LARGOS,
+                              detalle.largo == null ? null : String(detalle.largo),
+                            ).map((op) => (
+                              <option key={op} value={op}>
+                                {op}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-span-4">
+                          <label className="mb-2 block font-medium">
+                            Peso Bruto
+                          </label>
+
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              step="0.001"
+                              value={detalle.peso_bruto ?? ""}
+                              onChange={(e) =>
+                                handleDetalleMedicion(
+                                  index,
+                                  "peso_bruto",
+                                  e.target.value,
+                                )
+                              }
+                            />
+
+                            <span className="shrink-0 text-sm font-medium text-slate-500">
+                              TN
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="col-span-4">
+                          <label className="mb-2 block font-medium">
+                            Tara
+                          </label>
+
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              step="0.001"
+                              value={detalle.tara ?? ""}
+                              onChange={(e) =>
+                                handleDetalleMedicion(
+                                  index,
+                                  "tara",
+                                  e.target.value,
+                                )
+                              }
+                            />
+
+                            <span className="shrink-0 text-sm font-medium text-slate-500">
+                              TN
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="col-span-4">
+                          <label className="mb-2 block font-medium">
+                            Peso Neto
+                          </label>
+
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              step="0.001"
+                              value={detalle.peso_neto ?? ""}
+                              readOnly
+                            />
+
+                            <span className="shrink-0 text-sm font-medium text-slate-500">
+                              TN
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="col-span-4">
+                          <label className="mb-2 block font-medium">
+                            Depósito
+                          </label>
+
+                          <Input
+                            value={detalle.deposito ?? ""}
+                            onChange={(e) =>
+                              handleDetalleMedicion(
+                                index,
+                                "deposito",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="col-span-4">
+                          <label className="mb-2 block font-medium">
+                            Precio Unitario
+                          </label>
+
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={detalle.precio_unitario ?? ""}
+                            onChange={(e) =>
+                              handleDetalleMedicion(
+                                index,
+                                "precio_unitario",
+                                e.target.value,
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="col-span-4">
+                          <label className="mb-2 block font-medium">
+                            Lote
+                          </label>
+
+                          <Input
+                            value={detalle.lote ?? ""}
+                            onChange={(e) =>
+                              handleDetalleMedicion(
+                                index,
+                                "lote",
+                                e.target.value,
+                              )
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "F3") {
+                                e.preventDefault();
+                                generarLote(index);
+                              }
+                            }}
+                            placeholder="F3 para generar"
+                          />
+                        </div>
                       </div>
                     </div>
                   );
@@ -492,7 +814,7 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
           </>
         )}
       </div>
-    </div>
+    </form>
   );
 }
 
