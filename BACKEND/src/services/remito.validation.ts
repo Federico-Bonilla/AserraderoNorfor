@@ -280,7 +280,6 @@ function validarDetalleItem(idx: number, item: unknown): RemitoDetalle | null {
   numeroNullONoNegativo(`detalle[${idx}].peso_bruto`, item.peso_bruto);
   numeroNullONoNegativo(`detalle[${idx}].tara`, item.tara);
   numeroNullONoNegativo(`detalle[${idx}].peso_neto`, item.peso_neto);
-  numeroNullONoNegativo(`detalle[${idx}].volumen`, item.volumen);
   textoOpcional(`detalle[${idx}].deposito`, item.deposito, MAX.deposito);
   numeroNullONoNegativo(
     `detalle[${idx}].precio_unitario`,
@@ -304,7 +303,6 @@ function validarDetalleItem(idx: number, item: unknown): RemitoDetalle | null {
     peso_bruto: normNum(item.peso_bruto),
     tara: normNum(item.tara),
     peso_neto: normNum(item.peso_neto),
-    volumen: normNum(item.volumen),
     deposito: normTexto(item.deposito),
     precio_unitario: normNum(item.precio_unitario),
     lote: normTexto(item.lote),

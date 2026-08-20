@@ -1,11 +1,32 @@
+import { useState } from "react";
 import { useRemitos } from "../hooks/useRemitos";
+import { anularRemito } from "../services/remito.service";
 
 interface ListadoRemitosProps {
   onVer: (id: number) => void;
 }
 
 function ListadoRemitos({ onVer }: ListadoRemitosProps) {
-  const { remitos, loading, error } = useRemitos();
+  const { remitos, loading, error, recargar } = useRemitos();
+  const [anulandoId, setAnulandoId] = useState<number | null>(null);
+
+  const confirmarAnular = async (id: number, numeroRemito: string) => {
+    const ok = window.confirm(
+      `Anular el remito ${numeroRemito}? Esta accion no se puede deshacer.`,
+    );
+    if (!ok) return;
+
+    setAnulandoId(id);
+    try {
+      await anularRemito(id);
+      await recargar();
+    } catch (err) {
+      console.error(err);
+      window.alert("Error al anular el remito");
+    } finally {
+      setAnulandoId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -57,38 +78,57 @@ function ListadoRemitos({ onVer }: ListadoRemitosProps) {
           </tr>
         </thead>
         <tbody>
-          {remitos.map((remito) => (
-            <tr
-              key={remito.id}
-              className="border-b border-slate-100 transition hover:bg-slate-50"
-            >
-              <td className="px-4 py-3 text-sm">
-                {remito.letra} {remito.numero_sucursal} - {remito.numero_remito}
-              </td>
-              <td className="px-4 py-3 text-sm">{remito.fecha_comprobante}</td>
-              <td className="px-4 py-3 text-sm">{remito.proveedor}</td>
-              <td className="px-4 py-3 text-sm">{remito.transporte}</td>
-              <td className="px-4 py-3 text-sm">
-                <span
-                  className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${
-                    remito.estado === "ACTIVO"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-slate-100 text-slate-700"
-                  }`}
-                >
-                  {remito.estado}
-                </span>
-              </td>
-              <td className="px-4 py-3 text-sm">
-                <button
-                  onClick={() => onVer(remito.id)}
-                  className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-700"
-                >
-                  👁 Ver
-                </button>
-              </td>
-            </tr>
-          ))}
+          {remitos.map((remito) => {
+            const anulado = remito.estado === "ANULADO";
+            return (
+              <tr
+                key={remito.id}
+                className="border-b border-slate-100 transition hover:bg-slate-50"
+              >
+                <td className="px-4 py-3 text-sm">
+                  {remito.letra} {remito.numero_sucursal} - {remito.numero_remito}
+                </td>
+                <td className="px-4 py-3 text-sm">{remito.fecha_comprobante}</td>
+                <td className="px-4 py-3 text-sm">{remito.proveedor}</td>
+                <td className="px-4 py-3 text-sm">{remito.transporte}</td>
+                <td className="px-4 py-3 text-sm">
+                  <span
+                    className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${
+                      anulado
+                        ? "bg-red-100 text-red-800"
+                        : "bg-green-100 text-green-800"
+                    }`}
+                  >
+                    {remito.estado}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-sm">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => onVer(remito.id)}
+                      className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-slate-700"
+                    >
+                      👁 Ver
+                    </button>
+                    {!anulado && (
+                      <button
+                        onClick={() =>
+                          confirmarAnular(
+                            remito.id,
+                            `${remito.letra} ${remito.numero_sucursal} - ${remito.numero_remito}`,
+                          )
+                        }
+                        disabled={anulandoId === remito.id}
+                        className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-700 disabled:bg-red-300"
+                      >
+                        🚫 Anular
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

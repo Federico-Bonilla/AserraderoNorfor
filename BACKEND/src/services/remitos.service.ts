@@ -92,7 +92,6 @@ export const obtenerRemitoPorId = async (
     peso_bruto: r.peso_bruto == null ? null : Number(r.peso_bruto),
     tara: r.tara == null ? null : Number(r.tara),
     peso_neto: r.peso_neto == null ? null : Number(r.peso_neto),
-    volumen: r.volumen == null ? null : Number(r.volumen),
     deposito: r.deposito,
     precio_unitario:
       r.precio_unitario == null ? null : Number(r.precio_unitario),
@@ -211,14 +210,13 @@ const insertarDetalleRemito = async (
         peso_bruto,
         tara,
         peso_neto,
-        volumen,
         deposito,
         precio_unitario,
         lote
       )
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,
-        $8,$9,$10,$11,$12,$13,$14,$15
+        $8,$9,$10,$11,$12,$13,$14
       );
       `,
       [
@@ -233,7 +231,6 @@ const insertarDetalleRemito = async (
         item.peso_bruto,
         item.tara,
         item.peso_neto,
-        item.volumen,
         item.deposito,
         item.precio_unitario,
         item.lote,
@@ -252,6 +249,25 @@ export const actualizarRemito = async (
     await client.query("BEGIN");
 
     const cabecera = datos.cabecera;
+
+    // ==========================
+    // T017: bloqueo de remitos ya ANULADOS.
+    // La anulacion es terminal: si el estado actual ya es 'ANULADO',
+    // el PUT no se procesa y se retorna null (=> 404 en el controller).
+    // Conserva cabecera y detalle intactos.
+    // ==========================
+    const estadoActual = await client.query(
+      "SELECT estado FROM remitos WHERE id = $1 FOR UPDATE",
+      [id],
+    );
+    if (estadoActual.rowCount === 0) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+    if (estadoActual.rows[0].estado === "ANULADO") {
+      await client.query("ROLLBACK");
+      return null;
+    }
 
     // ==========================
     // UPDATE de cabecera de remitos.
