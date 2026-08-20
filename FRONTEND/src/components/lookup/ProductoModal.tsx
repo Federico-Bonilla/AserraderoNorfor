@@ -112,6 +112,7 @@ function ProductoModal({
         <div className="p-4">
           <Input
             ref={inputRef}
+            noNavegar
             autoFocus
             placeholder="Buscar por código o descripción"
             value={busqueda}

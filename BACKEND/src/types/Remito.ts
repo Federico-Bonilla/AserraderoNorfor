@@ -79,16 +79,23 @@ export interface RemitoDetalle {
   item: number;
   producto: string;
   descripcion: string;
-  especie: string;
-  diametro: string;
+  // Campos de medicion opcionales. null = no medido (campo vacio).
+  // Los numericos declaran la precision real de DATABASE/schema.sql:
+  //   largo numeric(5,2), peso_bruto/peso_neto numeric(12,3),
+  //   volumen numeric(12,6), precio_unitario numeric(15,2).
+  especie: string | null;
+  diametro: string | null;
   largo: number | null;
   cantidad_rollos: number;
   peso_bruto: number | null;
+  tara: number | null;
+  // peso_neto: calculado por el backend como peso_bruto - tara (T016).
+  // El cliente puede enviarlo, pero el servicio lo recalcula siempre.
   peso_neto: number | null;
   volumen: number | null;
-  deposito: string;
+  deposito: string | null;
   precio_unitario: number | null;
-  lote: string;
+  lote: string | null;
 }
 
 export interface Remito {

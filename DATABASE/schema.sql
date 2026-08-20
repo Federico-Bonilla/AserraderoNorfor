@@ -93,6 +93,7 @@ CREATE TABLE remitos_detalle (
   largo numeric(5, 2),
   cantidad_rollos integer NOT NULL,
   peso_bruto numeric(12, 3),
+  tara numeric(12, 3),
   peso_neto numeric(12, 3),
   volumen numeric(12, 6),
   deposito character varying(100),

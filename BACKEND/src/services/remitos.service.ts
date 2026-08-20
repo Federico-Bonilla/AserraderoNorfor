@@ -1,5 +1,6 @@
 import { PoolClient } from "pg";
 import { pool } from "../database/connection";
+import { Origen, CATALOGO_ORIGENES } from "../data/origenes.catalog";
 import {
   Remito,
   RemitoGuardado,
@@ -17,6 +18,10 @@ export const obtenerRemitos = async (): Promise<RemitoGuardado[]> => {
 
   return resultado.rows;
 };
+
+// Listado de origenes (catalogo existente de la organizacion; no se
+// inventan datos). Se devuelve desde el catalogo, no desde remitos.
+export const getOrigenes = async (): Promise<Origen[]> => CATALOGO_ORIGENES;
 
 export const obtenerRemitoPorId = async (
   id: number,
@@ -79,19 +84,106 @@ export const obtenerRemitoPorId = async (
     item: r.item,
     producto: r.producto,
     descripcion: r.descripcion,
+    // NULL en BD -> null (no 0) para reflejar "no medido" y poder editarlo
     especie: r.especie,
     diametro: r.diametro,
-    largo: Number(r.largo ?? 0),
+    largo: r.largo == null ? null : Number(r.largo),
     cantidad_rollos: r.cantidad_rollos,
-    peso_bruto: Number(r.peso_bruto ?? 0),
-    peso_neto: Number(r.peso_neto ?? 0),
-    volumen: Number(r.volumen ?? 0),
+    peso_bruto: r.peso_bruto == null ? null : Number(r.peso_bruto),
+    tara: r.tara == null ? null : Number(r.tara),
+    peso_neto: r.peso_neto == null ? null : Number(r.peso_neto),
+    volumen: r.volumen == null ? null : Number(r.volumen),
     deposito: r.deposito,
-    precio_unitario: Number(r.precio_unitario ?? 0),
+    precio_unitario:
+      r.precio_unitario == null ? null : Number(r.precio_unitario),
     lote: r.lote,
   }));
 
   return { id, cabecera, detalle };
+};
+
+// ==========================
+// Reglas de negocio de medición (T016)
+// ==========================
+
+// Peso Neto = Peso Bruto - Tara (protegido en backend, no depende del frontend).
+// Si no hay peso_bruto, no se puede calcular -> null.
+const redondear3 = (n: number): number => Math.round(n * 1000) / 1000;
+
+const calcularPesoNeto = (
+  pesoBruto: number | null,
+  tara: number | null,
+): number | null => {
+  if (pesoBruto === null || pesoBruto === undefined) return null;
+  return redondear3(pesoBruto - (tara ?? 0));
+};
+
+// Clave fija para pg_advisory_xact_lock: serializa la generación de lotes
+// entre transacciones concurrentes (máximo numérico + 1, LPAD 5 dígitos).
+const LOTE_LOCK_KEY = 771032001;
+
+// Consulta auxiliar: máximo lote numérico existente ('' o valores no numéricos
+// se ignoran). Los lotes se almacenan como varchar(30); históricamente '1'.
+const consultarMaxLote = async (
+  client: PoolClient,
+): Promise<number> => {
+  const resultado = await client.query(`
+    SELECT MAX(CAST(lote AS integer))::int AS max_lote
+    FROM remitos_detalle
+    WHERE lote IS NOT NULL AND lote <> '' AND lote ~ '^[0-9]+$';
+  `);
+  return resultado.rows[0].max_lote ?? 0;
+};
+
+const proximoLote = (maxLote: number): string =>
+  String(maxLote + 1).padStart(5, "0");
+
+// Prepara el detalle antes de persistir (dentro de la transacción):
+//  1. Recalcula peso_neto = peso_bruto - tara (ignora el valor del cliente).
+//  2. Asigna lote (5 dígitos) a los items cuyo lote viene vacío/null,
+//     de forma segura y concurrente (advisory lock en la misma transacción).
+const prepararDetalleParaPersistir = async (
+  client: PoolClient,
+  detalle: RemitoDetalle[],
+): Promise<RemitoDetalle[]> => {
+  const conCalculos: RemitoDetalle[] = detalle.map((item) => ({
+    ...item,
+    peso_neto: calcularPesoNeto(item.peso_bruto, item.tara),
+  }));
+
+  const pendientes = conCalculos.filter((d) => !d.lote);
+  if (pendientes.length === 0) return conCalculos;
+
+  await client.query("SELECT pg_advisory_xact_lock($1)", [LOTE_LOCK_KEY]);
+  let siguiente = (await consultarMaxLote(client)) + 1;
+
+  return conCalculos.map((d) => {
+    if (d.lote) return d;
+    const lote = proximoLote(siguiente);
+    siguiente += 1;
+    return { ...d, lote };
+  });
+};
+
+// Siguiente lote para F3 (devuelve ejemplo "00123").
+// Usa su propia transacción con el mismo advisory lock para no generar
+// duplicados si dos usuarios presionan F3 a la vez.
+export const obtenerSiguienteLote = async (): Promise<string> => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock($1)", [LOTE_LOCK_KEY]);
+    const maxLote = await consultarMaxLote(client);
+    const lote = proximoLote(maxLote);
+    await client.query("COMMIT");
+    return lote;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 // ==========================
@@ -117,6 +209,7 @@ const insertarDetalleRemito = async (
         largo,
         cantidad_rollos,
         peso_bruto,
+        tara,
         peso_neto,
         volumen,
         deposito,
@@ -125,7 +218,7 @@ const insertarDetalleRemito = async (
       )
       VALUES (
         $1,$2,$3,$4,$5,$6,$7,
-        $8,$9,$10,$11,$12,$13,$14
+        $8,$9,$10,$11,$12,$13,$14,$15
       );
       `,
       [
@@ -138,6 +231,7 @@ const insertarDetalleRemito = async (
         item.largo,
         item.cantidad_rollos,
         item.peso_bruto,
+        item.tara,
         item.peso_neto,
         item.volumen,
         item.deposito,
@@ -245,7 +339,12 @@ export const actualizarRemito = async (
       id,
     ]);
 
-    await insertarDetalleRemito(client, id, datos.detalle);
+    const detalleFinal = await prepararDetalleParaPersistir(
+      client,
+      datos.detalle,
+    );
+
+    await insertarDetalleRemito(client, id, detalleFinal);
 
     await client.query("COMMIT");
 
@@ -344,7 +443,12 @@ export const guardarRemito = async (datos: Remito) => {
     // remitos_detalle (este es el nombre de la tabla en la base de datos PostgreSQL)
     // ==========================
 
-    await insertarDetalleRemito(client, remitoId, datos.detalle);
+    const detalleFinal = await prepararDetalleParaPersistir(
+      client,
+      datos.detalle,
+    );
+
+    await insertarDetalleRemito(client, remitoId, detalleFinal);
 
     await client.query("COMMIT");
 
