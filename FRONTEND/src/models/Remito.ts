@@ -65,8 +65,6 @@ export interface RemitoDetalle {
   tara: number | null;
   peso_neto: number | null;
 
-  volumen: number | null;
-
   deposito: string | null;
 
   precio_unitario: number | null;

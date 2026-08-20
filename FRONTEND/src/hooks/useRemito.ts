@@ -127,8 +127,6 @@ export function useRemito() {
           tara,
           peso_neto: pesoNeto,
 
-          volumen: null,
-
           deposito: normTextoDetalle(nuevoItem.deposito),
 
           precio_unitario: normNumDetalle(nuevoItem.precio_unitario),

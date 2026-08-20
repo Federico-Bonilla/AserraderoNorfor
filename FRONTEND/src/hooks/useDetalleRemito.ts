@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Remito, RemitoDetalle } from "../models/Remito";
 import {
   getRemitoById,
@@ -36,24 +36,24 @@ export function useDetalleRemito(id: number) {
   const [guardando, setGuardando] = useState(false);
   const [errores, setErrores] = useState<string[]>([]);
 
-  useEffect(() => {
-    const cargar = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await getRemitoById(id);
-        setFormulario({ cabecera: data.cabecera, detalle: data.detalle });
-        setModo("ver");
-      } catch (err) {
-        console.error(err);
-        setError("Error al cargar el remito");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    cargar();
+  const cargar = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getRemitoById(id);
+      setFormulario({ cabecera: data.cabecera, detalle: data.detalle });
+      setModo("ver");
+    } catch (err) {
+      console.error(err);
+      setError("Error al cargar el remito");
+    } finally {
+      setLoading(false);
+    }
   }, [id]);
+
+  useEffect(() => {
+    cargar();
+  }, [cargar]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -210,5 +210,6 @@ export function useDetalleRemito(id: number) {
     handleDetalleCantidad,
     handleDetalleMedicion,
     guardar,
+    recargar: cargar,
   };
 }

@@ -95,7 +95,6 @@ CREATE TABLE remitos_detalle (
   peso_bruto numeric(12, 3),
   tara numeric(12, 3),
   peso_neto numeric(12, 3),
-  volumen numeric(12, 6),
   deposito character varying(100),
   precio_unitario numeric(15, 2),
   lote character varying(30),

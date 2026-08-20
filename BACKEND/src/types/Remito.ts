@@ -41,7 +41,6 @@
 //     cantidad_rollos integer NOT NULL
 //     peso_bruto numeric(12,3)
 //     peso_neto numeric(12,3)
-//     volumen numeric(12,6)
 //     deposito varchar(100)
 //     precio_unitario numeric(15,2)
 //     lote varchar(30)
@@ -82,7 +81,7 @@ export interface RemitoDetalle {
   // Campos de medicion opcionales. null = no medido (campo vacio).
   // Los numericos declaran la precision real de DATABASE/schema.sql:
   //   largo numeric(5,2), peso_bruto/peso_neto numeric(12,3),
-  //   volumen numeric(12,6), precio_unitario numeric(15,2).
+  //   precio_unitario numeric(15,2).
   especie: string | null;
   diametro: string | null;
   largo: number | null;
@@ -92,7 +91,6 @@ export interface RemitoDetalle {
   // peso_neto: calculado por el backend como peso_bruto - tara (T016).
   // El cliente puede enviarlo, pero el servicio lo recalcula siempre.
   peso_neto: number | null;
-  volumen: number | null;
   deposito: string | null;
   precio_unitario: number | null;
   lote: string | null;

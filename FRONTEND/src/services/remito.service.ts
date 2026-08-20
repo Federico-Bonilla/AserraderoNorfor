@@ -19,6 +19,17 @@ export const actualizarRemito = async (id: number, remito: Remito) => {
   return await api.put(`/remitos/${id}`, remito);
 };
 
+// Anulacion logica (T017): reutiliza PUT /remitos/:id, enviando la
+// cabecera y el detalle actuales con estado = "ANULADO". Conserva cabecera
+// y detalle; no es DELETE fisico.
+export const anularRemito = async (id: number) => {
+  const remito = await getRemitoById(id);
+  return await actualizarRemito(id, {
+    cabecera: { ...remito.cabecera, estado: "ANULADO" },
+    detalle: remito.detalle,
+  });
+};
+
 // Siguiente lote (5 dígitos, ej. "00123"). El cálculo es de backend/BD
 // (máximo numérico + 1, protegido con advisory lock) para evitar duplicados.
 export const obtenerSiguienteLote = async (): Promise<string> => {

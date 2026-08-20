@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useDetalleRemito } from "../hooks/useDetalleRemito";
 import { useProveedores } from "../hooks/useProveedores";
 import { useProductos } from "../hooks/useProductos";
 import { useOrigenes } from "../hooks/useOrigenes";
-import { obtenerSiguienteLote } from "../services/remito.service";
+import { anularRemito, obtenerSiguienteLote } from "../services/remito.service";
 import { Proveedor } from "../services/proveedor.service";
 import { Producto } from "../services/producto.service";
 import Input, { enfocarSiguiente } from "./ui/Input";
@@ -48,11 +49,14 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
     handleDetalleCantidad,
     handleDetalleMedicion,
     guardar,
+    recargar,
   } = useDetalleRemito(id);
 
   const { proveedores } = useProveedores();
   const { productos } = useProductos();
   const { origenes } = useOrigenes();
+
+  const [anulando, setAnulando] = useState(false);
 
   if (loading) {
     return (
@@ -79,6 +83,7 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
 
   const esVer = modo === "ver";
   const c = formulario.cabecera;
+  const anulado = c.estado === "ANULADO";
 
   const proveedorActual: Proveedor | null =
     proveedores.find((p) => p.razon_social === c.proveedor) ??
@@ -122,6 +127,26 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
     if (ok) onGuardado();
   };
 
+  // Anulacion logica (T017): reutiliza PUT /remitos/:id con estado ANULADO.
+  // Conserva cabecera y detalle. Tras anular, recarga y vuelve a modo ver.
+  const handleAnular = async () => {
+    const ok = window.confirm(
+      `Anular el remito ${c.letra} ${c.numero_sucursal} - ${c.numero_remito}? Esta accion no se puede deshacer.`,
+    );
+    if (!ok) return;
+
+    setAnulando(true);
+    try {
+      await anularRemito(id);
+      await recargar();
+    } catch (err) {
+      console.error(err);
+      window.alert("Error al anular el remito");
+    } finally {
+      setAnulando(false);
+    }
+  };
+
   const generarLote = async (index: number) => {
     try {
       const lote = await obtenerSiguienteLote();
@@ -153,11 +178,32 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
 
         <span
           className={`ml-2 inline-block rounded-full px-2 py-1 text-xs font-medium ${
+            anulado
+              ? "bg-red-100 text-red-800"
+              : "bg-green-100 text-green-800"
+          }`}
+        >
+          {c.estado}
+        </span>
+
+        <span
+          className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${
             esVer ? "bg-slate-100 text-slate-700" : "bg-blue-100 text-blue-800"
           }`}
         >
           {esVer ? "Modo Visualización" : "Modo Edición"}
         </span>
+
+        {!esVer && !anulado && (
+          <Button
+            type="button"
+            onClick={handleAnular}
+            disabled={anulando}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            🚫 Anular
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-6">
@@ -790,7 +836,12 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
       <div className="flex gap-4">
         {esVer ? (
           <>
-            <Button type="button" onClick={activarEdicion}>
+            <Button
+              type="button"
+              onClick={activarEdicion}
+              disabled={anulado}
+              title={anulado ? "Remito anulado: no se puede editar" : undefined}
+            >
               ✏️ Editar
             </Button>
 
