@@ -7,7 +7,28 @@ import productosRoutes from "./routes/productos.routes";
 
 const app = express();
 
-app.use(cors());
+// T009: CORS restrictivo. Solo se permiten los origenes locales de la app
+// (renderer Vite en desarrollo y el origin del renderer Electron). Al ser una
+// app de escritorio local, con o sin CORS el acceso esta limitado por el bind
+// a 127.0.0.1; esta allowlist evita que una pestaña externa del navegador
+// haga fetch a la API local.
+const ORIGENES_PERMITIDOS = [
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
+];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Solicitudes sin Origin (mismo origen, tools, curl, electron): permitidas.
+      if (!origin || ORIGENES_PERMITIDOS.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("CORS: origen no permitido"));
+    },
+  }),
+);
 app.use(express.json());
 
 app.use(remitosRouter);
