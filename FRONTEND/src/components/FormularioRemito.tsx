@@ -50,6 +50,8 @@ function FormularioRemito() {
     handleGuardarRemito,
     handleExportarExcel,
     errores,
+    guardando,
+    errorGuardado,
   } = useRemito();
 
   // Peso Neto = Peso Bruto - Tara (preview; el backend recalcula al guardar).
@@ -668,14 +670,20 @@ function FormularioRemito() {
       )}
 
       <div className="flex gap-4">
-        <Button type="button" onClick={handleGuardarRemito}>
-          💾 Guardar
+        <Button type="button" onClick={handleGuardarRemito} disabled={guardando}>
+          {guardando ? "⏳ Guardando..." : "💾 Guardar"}
         </Button>
 
         <Button type="button" variant="success" onClick={handleExportarExcel}>
           📊 Exportar Excel
         </Button>
       </div>
+
+      {errorGuardado && (
+        <div className="rounded-md border border-red-300 bg-red-50 p-4">
+          <p className="text-sm text-red-700">{errorGuardado}</p>
+        </div>
+      )}
     </form>
   );
 }

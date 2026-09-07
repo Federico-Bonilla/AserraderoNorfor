@@ -53,6 +53,10 @@ export function useRemito() {
 
   const [errores, setErrores] = useState<string[]>([]);
 
+  // T014: estado de "guardando" para feedback y prevencion de doble envio.
+  const [guardando, setGuardando] = useState(false);
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
+
   const productoRef = useRef<HTMLInputElement>(null);
 
   const cantidadRollosRef = useRef<HTMLInputElement>(null);
@@ -155,6 +159,9 @@ export function useRemito() {
 
   // Guardar remito
   const handleGuardarRemito = async () => {
+    // T014: prevenir doble envio si ya hay un guardado en curso.
+    if (guardando) return;
+
     const erroresValidacion = validarRemitoFrontend(formulario);
 
     if (erroresValidacion.length > 0) {
@@ -163,6 +170,8 @@ export function useRemito() {
     }
 
     setErrores([]);
+    setErrorGuardado(null);
+    setGuardando(true);
 
     try {
       await guardarRemito(formulario);
@@ -179,7 +188,9 @@ export function useRemito() {
       });
     } catch (error) {
       console.error(error);
-      alert("Error al guardar");
+      setErrorGuardado("Error al guardar el remito");
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -218,5 +229,7 @@ export function useRemito() {
     handleExportarExcel,
 
     errores,
+    guardando,
+    errorGuardado,
   };
 }

@@ -10,12 +10,20 @@ export interface Producto {
 export const useProductos = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const cargarProductos = async () => {
-      const data = await getProductos();
-      setProductos(data);
-      setLoading(false);
+      try {
+        const data = await getProductos();
+        setProductos(data);
+        setError(null);
+      } catch (err) {
+        console.error("Error al cargar productos:", err);
+        setError("Error al cargar los productos");
+      } finally {
+        setLoading(false);
+      }
     };
 
     cargarProductos();
@@ -24,5 +32,6 @@ export const useProductos = () => {
   return {
     productos,
     loading,
+    error,
   };
 };
