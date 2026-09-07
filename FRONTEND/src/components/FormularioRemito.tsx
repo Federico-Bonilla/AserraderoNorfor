@@ -173,12 +173,6 @@ function FormularioRemito() {
                   value: proveedor?.cuit ?? "",
                 },
               } as React.ChangeEvent<HTMLInputElement>);
-
-              if (proveedor) {
-                setTimeout(() => {
-                  origenRef.current?.focus();
-                }, 0);
-              }
             }}
           />
         </div>
@@ -369,12 +363,6 @@ function FormularioRemito() {
             value={productoSeleccionado}
             onChange={(producto) => {
               setProductoSeleccionado(producto);
-
-              if (producto) {
-                setTimeout(() => {
-                  cantidadRollosRef.current?.focus();
-                }, 0);
-              }
             }}
           />
           <Input

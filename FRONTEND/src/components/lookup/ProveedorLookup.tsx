@@ -32,6 +32,7 @@ const ProveedorLookup = forwardRef<HTMLInputElement, ProveedorLookupProps>(
         proveedores.find((p) => p.cuenta.trim() === cuenta.trim()) ?? null;
 
       onChange(proveedor);
+      return proveedor;
     };
 
     // Enter en el input principal: si esta vacio abre el modal de
@@ -45,8 +46,11 @@ const ProveedorLookup = forwardRef<HTMLInputElement, ProveedorLookupProps>(
           return;
         }
 
-        buscarProveedor();
-        enfocarSiguiente(e.currentTarget);
+        // Solo avanza si la cuenta da match; sin match mantiene el foco.
+        const proveedor = buscarProveedor();
+        if (proveedor) {
+          enfocarSiguiente(e.currentTarget);
+        }
         return;
       }
 

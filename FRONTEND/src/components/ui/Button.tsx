@@ -8,6 +8,7 @@ function Button({
   variant = "primary",
   className = "",
   children,
+  type = "button",
   ...props
 }: ButtonProps) {
   const variants = {
@@ -17,6 +18,7 @@ function Button({
 
   return (
     <button
+      type={type}
       className={`
         rounded-lg
         px-6

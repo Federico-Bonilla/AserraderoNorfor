@@ -37,6 +37,7 @@ const ProductoLookup = forwardRef<HTMLInputElement, ProductoLookupProps>(
         productos.find((p) => p.codigo.trim() === codigo.trim()) ?? null;
 
       onChange(producto);
+      return producto;
     };
 
     // Enter en el input principal: si esta vacio abre el modal de
@@ -50,8 +51,12 @@ const ProductoLookup = forwardRef<HTMLInputElement, ProductoLookupProps>(
           return;
         }
 
-        buscarProducto();
-        enfocarSiguiente(e.currentTarget);
+        // Solo avanza si el codigo da match; sin match mantiene el foco
+        // (buscarProducto setea null y el efecto re-enfoca el input).
+        const producto = buscarProducto();
+        if (producto) {
+          enfocarSiguiente(e.currentTarget);
+        }
         return;
       }
 
