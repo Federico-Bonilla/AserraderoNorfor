@@ -1,9 +1,9 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "YourAppID",
+  "appId": "com.aserradero.norfor",
   "asar": true,
-  "productName": "YourAppName",
+  "productName": "AserraderoNorfor",
   "directories": {
     "output": "release/${version}"
   },
@@ -11,12 +11,34 @@
     "dist",
     "dist-electron"
   ],
-  "mac": {
-    "target": [
-      "dmg"
-    ],
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
-  },
+  "extraResources": [
+    {
+      "from": "../BACKEND/dist",
+      "to": "backend/dist",
+      "filter": [
+        "**/*"
+      ]
+    },
+    {
+      "from": "../BACKEND/node_modules",
+      "to": "backend/node_modules",
+      "filter": [
+        "**/*",
+        "!**/*.d.ts",
+        "!**/*.map",
+        "!**/*.md",
+        "!**/LICENSE*"
+      ]
+    },
+    {
+      "from": "../BACKEND/package.json",
+      "to": "backend/package.json"
+    }
+  ],
+  "files": [
+    "dist",
+    "dist-electron"
+  ],
   "win": {
     "target": [
       {
@@ -33,6 +55,12 @@
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
     "deleteAppDataOnUninstall": false
+  },
+  "mac": {
+    "target": [
+      "dmg"
+    ],
+    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
   },
   "linux": {
     "target": [
