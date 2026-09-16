@@ -85,12 +85,14 @@ export function validarRemitoFrontend(r: Remito): string[] {
     });
   }
 
-  // Cabecera: precio_transporte es numeric(15,2) nullable (>= 0).
-  if (
-    c.precio_transporte != null &&
-    (!Number.isFinite(c.precio_transporte) || c.precio_transporte < 0)
-  )
-    errores.push("Precio de transporte invalido");
+// Cabecera: precio_transporte es numeric(15,2) nullable (>= 0).
+  const pt = String(c.precio_transporte ?? "").trim();
+  if (pt !== "") {
+    const val = Number(pt);
+    if (!Number.isFinite(val) || val < 0) {
+      errores.push("Precio de transporte invalido");
+    }
+  }
 
   return errores;
 }
