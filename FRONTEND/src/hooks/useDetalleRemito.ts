@@ -151,7 +151,7 @@ export function useDetalleRemito(id: number) {
                   ? { ...d, [campo]: valorNormalizado, peso_neto: pesoNeto }
                   : d,
               ),
-            };
+};
           })()
         : prev,
     );
@@ -196,6 +196,45 @@ export function useDetalleRemito(id: number) {
     }
   };
 
+  const agregarItem = () => {
+    setFormulario((prev) =>
+      prev
+        ? {
+            ...prev,
+            detalle: [
+              ...prev.detalle,
+              {
+                item: prev.detalle.length + 1,
+                producto: "",
+                descripcion: "",
+                especie: null,
+                diametro: null,
+                largo: null,
+                cantidad_rollos: 0,
+                peso_bruto: null,
+                tara: null,
+                peso_neto: null,
+                deposito: null,
+                precio_unitario: null,
+                lote: null,
+              },
+            ],
+          }
+        : prev,
+    );
+  };
+
+  const eliminarItem = (index: number) => {
+    setFormulario((prev) =>
+      prev
+        ? {
+            ...prev,
+            detalle: prev.detalle.filter((_, i) => i !== index),
+          }
+        : prev,
+    );
+  };
+
   return {
     formulario,
     loading,
@@ -211,5 +250,7 @@ export function useDetalleRemito(id: number) {
     handleDetalleMedicion,
     guardar,
     recargar: cargar,
+    agregarItem,
+    eliminarItem,
   };
 }

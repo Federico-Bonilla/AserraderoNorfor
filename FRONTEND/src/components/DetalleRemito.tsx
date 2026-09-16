@@ -50,6 +50,8 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
     handleDetalleMedicion,
     guardar,
     recargar,
+    agregarItem,
+    eliminarItem,
   } = useDetalleRemito(id);
 
   const { proveedores } = useProveedores();
@@ -535,11 +537,27 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
                         }
                       : null);
 
+                  const puedeEliminar = formulario.detalle.length > 1;
+
                   return (
                     <div
                       key={index}
                       className="space-y-4 rounded-lg border border-slate-200 p-4"
                     >
+                      <div className="flex items-start justify-between">
+                        <h4 className="font-medium text-slate-700">
+                          Ítem #{index + 1}
+                        </h4>
+                        {!esVer && puedeEliminar && (
+                          <Button
+                            type="button"
+                            onClick={() => eliminarItem(index)}
+                            className="text-red-600 hover:bg-red-50 px-2 py-1"
+                          >
+                            🗑️
+                          </Button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-12 items-start gap-4">
                         <div className="col-span-7">
                           <label className="mb-2 block font-medium">
@@ -799,12 +817,20 @@ function DetalleRemito({ id, onCancelar, onGuardado }: DetalleRemitoProps) {
                   );
                 })
               )}
+
+              {!esVer && (
+                <Button
+                  type="button"
+                  onClick={agregarItem}
+                  className="w-full"
+                >
+                  ➕ Agregar ítem
+                </Button>
+              )}
+
             </div>
           )}
         </div>
-      </div>
-
-      <div>
         <label className="mb-2 block font-medium">Observaciones</label>
 
         <Textarea
