@@ -109,7 +109,7 @@ export const obtenerRemitoPorId = async (
 // Si no hay peso_bruto, no se puede calcular -> null.
 const redondear3 = (n: number): number => Math.round(n * 1000) / 1000;
 
-const calcularPesoNeto = (
+export const calcularPesoNeto = (
   pesoBruto: number | null,
   tara: number | null,
 ): number | null => {
@@ -134,7 +134,7 @@ const consultarMaxLote = async (
   return resultado.rows[0].max_lote ?? 0;
 };
 
-const proximoLote = (maxLote: number): string =>
+export const proximoLote = (maxLote: number): string =>
   String(maxLote + 1).padStart(5, "0");
 
 // Prepara el detalle antes de persistir (dentro de la transacción):
